@@ -1,13 +1,10 @@
-const addTaskForm = document.querySelector('form');
-const addTaskField = document.querySelector('#input-task');
-const taskList = document.querySelector('#task-list');
-
+// constants
 const COOKIE_NAME = 'tasks';
 const ANIMATION_TIMING = parseInt(getComputedStyle(document.body).getPropertyValue('--animation-timing').slice(0, -2))
 
 
 function randomizePlaceholder(input) {
-    // pick a randomized placeholder message for this input field
+    // set a randomized placeholder message for this input field
     const placeholders = ['buy bananas...', 'go for a run...', 'add a task...', 'to do...', 'hug bessie...',
         'do laundry...', 'moo...', 'move to a farm...', 'elope...', 'build an app...', 'make lunch...', 'call mom...'];
     input.placeholder = placeholders[Math.round(Math.random() * (placeholders.length - 1))];
@@ -60,10 +57,11 @@ class Task {
     }
 }
 
-
+// TODO: replace with Proxy object: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy
 function save(object) {
     // convert an object to a string representation of JSON and save it to localStorage
     localStorage.setItem(COOKIE_NAME, JSON.stringify(object));
+    console.table(object);
 }
 
 
@@ -97,43 +95,50 @@ function importTasks(taskListElem) {
     }
 }
 
-const tasks = importTasks(taskList);
-// change the prompt to something quirky after the first visit
-if (tasks.length > 0) {
-    randomizePlaceholder(addTaskField);
-}
+/* event handlers */
+function addTaskEvent(taskList, submitEv) {
+    /** Triggered when the 'add-task-form' is submitted
+     *  Creates a new Task, appends it to taskList, and adds it to the DOM,
+     *  taskList: an array of Task objects
+     *  submitEv: an Event object
+     */
+    submitEv.preventDefault();
+    const formElem = submitEv.currentTarget;
+    const taskNameFieldElem = formElem.firstElementChild;
+    const taskListElem = formElem.lastElementChild;
+    randomizePlaceholder(taskNameFieldElem);
 
-// add a new task event
-addTaskForm.addEventListener('submit', function (event) {
-    event.preventDefault();
-    randomizePlaceholder(addTaskField);
-
-    const taskText = addTaskField.value.trim();
-    let newTask = new Task(taskText, false, tasks.length);
-
+    const taskName = taskNameFieldElem.value.trim();
     // input validation
-    if (taskText === "") {
+    if (taskName === "") {
         return
     }
 
-    // add task to array tasks
-    tasks.push(newTask);
-    save(tasks);
+    // add the new task to the list
+    const newTask = new Task(taskName, false, taskList.length);
+    taskList.push(newTask);
+    save(taskList);
 
-    // add task to DOM and animate
-    taskList.appendChild(newTask.elem);
+    // add the new task to the DOM and animate
+    taskListElem.appendChild(newTask.elem);
     const grow = [{transform: "scaleY(0)"},
         {transform: "scaleY(1)"}];
     newTask.elem.animate(grow, ANIMATION_TIMING);
-    event.target.reset();
-});
+    formElem.reset();
+}
 
-// list item click events
-taskList.addEventListener('click', event => {
+
+function clickEvent(taskList, clickEv) {
+    /** Triggered when a child of the task list element is clicked.
+     *  Causes a variety of operations depending on the element that was clicked.
+     *  taskList: an array of Task objects
+     *  submitEv: an Event object
+     */
+
     // remove the associated task when a delete button is pressed
-    if (event.target.classList.contains('delete-btn')) {
-        const clickedTaskElem = event.target.parentElement;
-        const clickedTaskIndex = clickedTaskElem.dataset.index;
+    if (clickEv.target.classList.contains('delete-btn')) {
+        const clickedTaskElem = clickEv.target.parentElement;
+        const clickedTaskIndex = parseInt(clickedTaskElem.dataset.index);
 
         // shrink the task element in the DOM
         clickedTaskElem.classList.add('moving');
@@ -147,101 +152,119 @@ taskList.addEventListener('click', event => {
         });
 
         // move the rest of the tasks up and update their indices
-        tasks.forEach((task, index) => {
+        taskList.forEach((task, index) => {
             if (index > clickedTaskIndex) {
-                const travelDist = tasks[index - 1].elem.offsetTop - task.elem.offsetTop;
+                const travelDist = taskList[index - 1].elem.offsetTop - task.elem.offsetTop;
                 slideElem(task.elem, 0, travelDist);
-                task.elem.dataset.index = index - 1;
+                task.elem.dataset.index = (index - 1).toString();
             }
         });
 
         // remove the task from the array of tasks
-        tasks.splice(clickedTaskIndex, 1);
-
-        // update the cookie
-        save(tasks);
+        taskList.splice(clickedTaskIndex, 1);
+        save(taskList);
     }
 
     // mark a task as complete when it is clicked
-    else if (event.target.classList.contains('task')) {
-        const taskIndex = event.target.dataset.index;
+    else if (clickEv.target.classList.contains('task')) {
+        const taskIndex = clickEv.target.dataset.index;
         try {
             tasks[taskIndex].toggle();
-            // update the cookie
             save(tasks);
         } catch (err) {
             console.error('Index mismatch between DOM and tasks: ', err);
         }
     }
-});
+}
 
-// drag item events
-taskList.addEventListener('mousedown', event => {
+
+function startDragEvent(taskList, clickEv) {
+    /** triggered when a Tasks's drag button is clicked. Causes the Task to become draggable.
+     *  taskList: an array of Task objects
+     *  submitEv: an Event object
+     */
+
     // only start dragging an element when its drag button is clicked
-    if (!event.target.classList.contains('drag-btn')) {
+    if (!clickEv.target.classList.contains('drag-btn')) {
         return;
     }
 
-    const button = event.target;
-    const taskElement = event.target.parentElement;
-    const initialClientY = event.clientY;
+    const button = clickEv.target;
+    const taskElement = clickEv.target.parentElement;
+    const initialClientY = clickEv.clientY;
     const initialOffset = taskElement.offsetTop
-    const distToSwap = taskElement.offsetHeight / 2;
+    let distToSwapUp = taskElement.previousElementSibling?.offsetHeight / 2;
+    let distToSwapDown = taskElement.nextElementSibling?.offsetHeight / 2;
 
     // update the drag button visuals
     button.setAttribute('aria-pressed', 'true');
     taskElement.classList.add('moving');
 
-    function dragTask(mouseEv) {
-        const dragDist = mouseEv.clientY - initialClientY;
+    function dragEvent(moveEv) {
+        const dragDist = moveEv.clientY - initialClientY;
 
         // swap positions with the element below
-        if (taskElement.nextElementSibling !== null && dragDist > taskElement.offsetTop - initialOffset + distToSwap) {
+        if (taskElement.nextElementSibling !== null && dragDist > taskElement.offsetTop - initialOffset + distToSwapDown) {
             const taskIndex = parseInt(taskElement.dataset.index);
-            const swapTarget = tasks[taskIndex + 1].elem
-            const travelDist = swapTarget.offsetTop - taskElement.offsetTop;
+            const swapTarget = taskList[taskIndex + 1].elem
+            distToSwapUp = swapTarget.offsetHeight / 2;
+            distToSwapDown = swapTarget.nextElementSibling?.offsetHeight / 2;
 
             // update the array of tasks
-            tasks.splice(taskIndex, 2, tasks[taskIndex + 1], tasks[taskIndex]);
-            save(tasks);
+            taskList.splice(taskIndex, 2, tasks[taskIndex + 1], tasks[taskIndex]);
+            save(taskList);
 
             // update the DOM and animate the elements
             swapTarget.after(taskElement);
-            slideElem(taskElement, -travelDist, 0);
-            slideElem(taskElement.previousElementSibling, travelDist, 0);
+            slideElem(taskElement, -swapTarget.offsetHeight, 0);
+            slideElem(swapTarget, taskElement.offsetHeight, 0);
 
             // update the index values on the elements
-            taskElement.dataset.index = taskIndex + 1
-            swapTarget.dataset.index = taskIndex
+            taskElement.dataset.index = (taskIndex + 1).toString();
+            swapTarget.dataset.index = taskIndex.toString();
         }
 
         // swap positions with the element above
-        else if (taskElement.previousElementSibling !== null && dragDist < taskElement.offsetTop - initialOffset - distToSwap) {
+        else if (taskElement.previousElementSibling !== null && dragDist < taskElement.offsetTop - initialOffset - distToSwapUp) {
             const taskIndex = parseInt(taskElement.dataset.index);
-            const swapTarget = tasks[taskIndex - 1].elem
-            const travelDist = swapTarget.offsetTop - taskElement.offsetTop;
+            const swapTarget = taskList[taskIndex - 1].elem
+            distToSwapUp = swapTarget.nextElementSibling?.offsetHeight / 2;
+            distToSwapDown = swapTarget.offsetHeight / 2;
 
             // update the array of tasks
-            tasks.splice(taskIndex - 1, 2, tasks[taskIndex], tasks[taskIndex - 1]);
-            save(tasks);
-            // console.table(tasks);
+            taskList.splice(taskIndex - 1, 2, taskList[taskIndex], taskList[taskIndex - 1]);
+            save(taskList);
 
             // update the DOM and animate the elements
             swapTarget.before(taskElement);
-            slideElem(taskElement, -travelDist, 0);
-            slideElem(swapTarget, travelDist, 0);
+            slideElem(taskElement, swapTarget.offsetHeight, 0);
+            slideElem(swapTarget, -taskElement.offsetHeight, 0);
 
             // update the index values on the elements
-            taskElement.dataset.index = taskIndex - 1
-            swapTarget.dataset.index = taskIndex
+            taskElement.dataset.index = (taskIndex - 1).toString();
+            swapTarget.dataset.index = taskIndex.toString();
         }
     }
 
-    document.addEventListener('mousemove', dragTask);
-    document.addEventListener('mouseup', mouseEv => {
+    document.addEventListener('mousemove', dragEvent);
+    document.addEventListener('mouseup', releaseEv => {
         // clean up after the mouse is released
-        document.removeEventListener('mousemove', dragTask);
+        document.removeEventListener('mousemove', dragEvent);
         taskElement.classList.remove('moving');
         button.setAttribute('aria-pressed', 'false');
     }, {once: true, passive: true});
-});
+}
+
+
+const taskListElem = document.querySelector('.task-list');
+const tasks = importTasks(taskListElem);
+// change the prompt to something quirky after the first visit
+if (tasks.length > 0) {
+    randomizePlaceholder(document.querySelector('.add-task-input'));
+}
+// add task form functionality
+document.querySelector('.add-task-form').addEventListener('submit', addTaskEvent.bind(null, tasks));
+// task click functionality
+taskListElem.addEventListener('click', clickEvent.bind(null, tasks));
+// task drag functionality
+taskListElem.addEventListener('mousedown', startDragEvent.bind(null, tasks));
