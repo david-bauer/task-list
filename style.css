@@ -29,6 +29,8 @@ body {
     0.4px 0.8px 1px -1.2px hsl(var(--shadow-color) / 0.34),
     1px 2px 2.5px -2.5px hsl(var(--shadow-color) / 0.34);
 
+    --animation-timing: 100ms;
+
     /* body fills viewport */
     margin: 0;
     width: 100vw;
@@ -42,15 +44,6 @@ body {
     color: var(--dark-accent);
 }
 
-.content {
-    padding: 2em;
-    margin-top: 10vh;
-
-    background-color: var(--white);
-    border-radius: 1em;
-    box-shadow: var(--shadow-elevation-medium);
-}
-
 h1 {
     text-align: center;
     text-transform: lowercase;
@@ -61,6 +54,16 @@ form {
     display: flex;
     flex-direction: row;
 }
+
+.content {
+    padding: 2em;
+    margin-top: 10vh;
+
+    background-color: var(--white);
+    border-radius: 1em;
+    box-shadow: var(--shadow-elevation-medium);
+}
+
 
 #input-task {
     flex-grow: 1;
@@ -101,6 +104,10 @@ button {
     cursor: pointer;
 }
 
+button[aria-pressed="true"] {
+    transform: translate(1px, 1px);
+}
+
 #add-task-button {
     padding-left: calc(0.8ch + 4px);
     border-radius: 0 1em 1em 0;
@@ -115,6 +122,11 @@ button {
     background-color: var(--light-accent);
 }
 
+#add-task-button:focus {
+    outline: 1px solid transparent;
+    background-color: var(--light-accent);
+}
+
 /* list of tasks styles */
 #task-list {
     padding: 0;
@@ -122,7 +134,11 @@ button {
     list-style: none;
 
     border-radius: 1em;
-    box-shadow: var(--shadow-elevation-low);
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+    align-content: stretch;
 }
 
 .task {
@@ -132,34 +148,14 @@ button {
     gap: 0;
     height: 3em;
 
-    position: relative;
-    top: 0;
-
     cursor: pointer;
     user-select: none;
 
     background-color: var(--light-pink);
 
-    transition: top 100ms;
-}
-
-.task:first-child {
-    border-top: 0;
-    border-top-right-radius: 1em;
-    border-top-left-radius: 1em;
-}
-
-.task:first-child .delete-btn {
-    border-top-right-radius: 1em;
-}
-
-.task:last-child {
-    border-bottom-right-radius: 1em;
-    border-bottom-left-radius: 1em;
-}
-
-.task:last-child .delete-btn {
-    border-bottom-right-radius: 1em;
+    transform-origin: top center;
+    transition: transform, background-color, color;
+    transition-duration: var(--animation-timing);
 }
 
 .task:nth-child(2n+1) {
@@ -181,20 +177,37 @@ button {
     margin-right: 1em;
     line-height: 3em; /* centering text vertically is VERY HARD */
     flex-grow: 1;
+    pointer-events: none;
 }
 
 .task button {
+    opacity: 0;
     background-color: transparent;
+    transition: background-color, color, opacity;
+    transition-duration: var(--animation-timing);
+}
+
+.task:hover button {
+    opacity: 1;
 }
 
 .task button:hover {
+    background-color: var(--pink);
+}
+
+.task:nth-of-type(2n+1) button:hover {
+    background-color: var(--light-pink);
+}
+
+:is(.task, .task:nth-of-type(2n+1)) :is(button[aria-pressed="true"], button:focus) {
     color: var(--light-pink);
     background-color: var(--dark-accent);
+    outline: 1px solid transparent;
+    opacity: 1;
 }
 
 .task button[aria-pressed="true"] {
-    color: var(--dark-accent);
-    background-color: var(--light-accent);
+    cursor: grabbing;
 }
 
 .task .drag-btn {
@@ -210,6 +223,11 @@ i {
     pointer-events: none;
 }
 
-.above {
+.moving {
     z-index: 1000;
+}
+
+.error {
+    background-color: crimson !important;
+    color: var(--white) !important;
 }

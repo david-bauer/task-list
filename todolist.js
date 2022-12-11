@@ -3,24 +3,34 @@ const addTaskField = document.querySelector('#input-task');
 const taskList = document.querySelector('#task-list');
 
 const COOKIE_NAME = 'tasks';
+const ANIMATION_TIMING = parseInt(getComputedStyle(document.body).getPropertyValue('--animation-timing').slice(0, -2))
 
-// pick a randomized placeholder message for the new task field every time the page is loaded
+
 function randomizePlaceholder(input) {
+    // pick a randomized placeholder message for this input field
     const placeholders = ['buy bananas...', 'go for a run...', 'add a task...', 'to do...', 'hug bessie...',
-        'do laundry...', 'moo...', 'move to a farm...'];
-    input.placeholder = placeholders[Math.round(Math.random() * placeholders.length)];
+        'do laundry...', 'moo...', 'move to a farm...', 'elope...', 'build an app...', 'make lunch...', 'call mom...'];
+    input.placeholder = placeholders[Math.round(Math.random() * (placeholders.length - 1))];
 }
 
-randomizePlaceholder(addTaskField);
+
+function slideElem(elem, start, end) {
+    // moves an element up 'start' pixels and then slides it to 'end'
+    const keyframes = [
+        {transform: `translate(${0}px, ${start}px)`},
+        {transform: `translate(${0}px, ${end}px)`}];
+
+    return elem.animate(keyframes, ANIMATION_TIMING)
+}
 
 
 class Task {
-    constructor(text, completed = false) {
+    constructor(text, completed = false, index = 0) {
         /*  example list item
-        <li class="task">
-            <span class="task-name task-clickable">Example</span>
-            <button class="drag-btn"><i class="fa-solid fa-arrows-up-down"></i></button>
-            <button class="delete-btn"><i class="fa-solid fa-trash-can"></i></button>
+        <li class="task" aria-checked="false" data-index="index">
+            <span class="task-name">Example</span>
+            <button class="drag-btn" aria-pressed="false"><i class="fa-solid fa-arrows-up-down"></i></button>
+            <button class="delete-btn" aria-pressed="false"><i class="fa-solid fa-trash-can"></i></button>
         </li> */
 
         this.name = text;
@@ -29,25 +39,12 @@ class Task {
         this.elem = document.createElement('li');
         this.elem.setAttribute('aria-checked', this.completed);
         this.elem.classList.add('task');
+        this.elem.dataset.index = index;
 
-        this.taskName = document.createElement('span');
-        this.taskName.classList.add('task-name', 'task-clickable');
-        this.taskName.innerText = text;
-        this.elem.appendChild(this.taskName);
-
-        this.dragBtn = document.createElement('button');
-        this.dragBtn.classList.add('drag-btn');
-        const dragIcon = document.createElement('i');
-        dragIcon.classList.add('fa-solid', 'fa-arrows-up-down');
-        this.dragBtn.appendChild(dragIcon);
-        this.elem.appendChild(this.dragBtn);
-
-        this.deleteBtn = document.createElement('button');
-        this.deleteBtn.classList.add('delete-btn');
-        const trashIcon = document.createElement('i');
-        trashIcon.classList.add('fa-solid', 'fa-trash-can');
-        this.deleteBtn.appendChild(trashIcon);
-        this.elem.appendChild(this.deleteBtn);
+        this.elem.innerHTML =
+            `<span class="task-name">${text}</span>` +
+            '<button class="drag-btn" aria-pressed="false"><i class="fa-solid fa-arrows-up-down"></i></button>' +
+            '<button class="delete-btn" aria-pressed="false"><i class="fa-solid fa-trash-can"></i></button>';
     }
 
     toggle() {
@@ -58,8 +55,8 @@ class Task {
     }
 
     toJSON() {
-        // minify tasks by saving only the name and state
-        return {name: this.taskName.innerText, completed: this.completed};
+        // minify tasks by saving only the name and state when JSON.stringify is called on this object
+        return {name: this.name, completed: this.completed};
     }
 }
 
@@ -70,130 +67,178 @@ function save(object) {
 }
 
 
-function importTasks() {
+function importTasks(taskListElem) {
     // import tasks from previous sessions using cookies
     let importedTasks = [];
 
     try {
         // read the cookie and convert to list of objects
-        importedTasks = JSON.parse(localStorage.getItem(COOKIE_NAME)) || [];
+        importedTasks = JSON.parse(localStorage.getItem(COOKIE_NAME)) ?? [];
 
-        return importedTasks.map(task => {
+        return importedTasks.map((task, index) => {
             if (task !== null && ('name' in task) && ('completed' in task)) {
                 // convert each minified task to real Task objects
-                const newTask = new Task(task.name, task.completed);
+                const newTask = new Task(task.name, task.completed, index);
                 // add the task to the DOM
-                taskList.appendChild(newTask.elem);
+                taskListElem.appendChild(newTask.elem);
                 return newTask;
             } else {
                 throw SyntaxError(`cookie ${COOKIE_NAME} is incorrectly formatted`);
             }
         });
     } catch (err) {
-        console.error('Could not import tasks: ', err);
-        return [];
+        console.error('Could not import all tasks: ', err);
+
+        const errorTask = new Task("task import failed :(");
+        errorTask.elem.classList.add('error');
+        taskListElem.append(errorTask.elem);
+
+        return [errorTask];
     }
 }
 
-let tasks = importTasks();
+randomizePlaceholder(addTaskField);
+const tasks = importTasks(taskList);
 
 // add a new task event
 addTaskForm.addEventListener('submit', function (event) {
     event.preventDefault();
-    const taskText = addTaskField.value.trim();
+    randomizePlaceholder(addTaskField);
 
-    let newTask = new Task(taskText, false);
+    const taskText = addTaskField.value.trim();
+    let newTask = new Task(taskText, false, tasks.length);
+
+    // input validation
+    if (taskText === "") {
+        return
+    }
 
     // add task to array tasks
     tasks.push(newTask);
-    // add task to DOM
-    taskList.appendChild(newTask.elem);
-    // save task to storage
     save(tasks);
+
+    // add task to DOM and animate
+    taskList.appendChild(newTask.elem);
+    const grow = [{transform: "scaleY(0)"},
+        {transform: "scaleY(1)"}];
+    newTask.elem.animate(grow, ANIMATION_TIMING);
     event.target.reset();
 });
 
 // list item click events
 taskList.addEventListener('click', event => {
-    // remove a task
+    // remove the associated task when a delete button is pressed
     if (event.target.classList.contains('delete-btn')) {
-        // remove the task from the DOM
-        event.target.parentElement.remove();
-        // remove the task from the array tasks
-        tasks.splice(tasks.findIndex(elem => elem.name === event.target.previousElementSibling.innerText.trim()), 1);
+        const clickedTaskElem = event.target.parentElement;
+        const clickedTaskIndex = clickedTaskElem.dataset.index;
+
+        // shrink the task element in the DOM
+        clickedTaskElem.classList.add('moving');
+        const shrink = [
+            {transform: "scaleY(1)"},
+            {transform: "scaleY(0)"}
+        ];
+        clickedTaskElem.animate(shrink, ANIMATION_TIMING).finished.then(value => {
+            // remove the task element from the DOM after the animation finishes
+            clickedTaskElem.remove();
+        });
+
+        // move the rest of the tasks up and update their indices
+        tasks.forEach((task, index) => {
+            if (index > clickedTaskIndex) {
+                const travelDist = tasks[index - 1].elem.offsetTop - task.elem.offsetTop;
+                slideElem(task.elem, 0, travelDist);
+                task.elem.dataset.index = index - 1;
+            }
+        });
+
+        // remove the task from the array of tasks
+        tasks.splice(clickedTaskIndex, 1);
+
         // update the cookie
         save(tasks);
     }
 
-    // mark a task as complete
-    else if (event.target.classList.contains('task-clickable')) {
+    // mark a task as complete when it is clicked
+    else if (event.target.classList.contains('task')) {
+        const taskIndex = event.target.dataset.index;
         try {
-            // find the task in the array tasks
-            const taskIndex = [...taskList.children].indexOf(event.target.parentElement);
             tasks[taskIndex].toggle();
             // update the cookie
             save(tasks);
         } catch (err) {
             console.error('Index mismatch between DOM and tasks: ', err);
         }
-    } else if (event.target.classList.contains('task')) {
-        try {
-            // find the task in the array tasks
-            const taskIndex = [...taskList.children].indexOf(event.target);
-            tasks[taskIndex].toggle();
-            // update the cookie
-            save(tasks);
-        } catch (err) {
-            console.error('Index mismatch between DOM and tasks: ', err);
-        }
-
     }
 });
 
 // drag item events
 taskList.addEventListener('mousedown', event => {
+    // only start dragging an element when its drag button is clicked
     if (!event.target.classList.contains('drag-btn')) {
         return;
     }
 
     const button = event.target;
     const taskElement = event.target.parentElement;
-    const taskIndex = [...taskList.children].indexOf(taskElement);
     const initialClientY = event.clientY;
     const initialOffset = taskElement.offsetTop
     const distToSwap = taskElement.offsetHeight / 2;
 
     // update the drag button visuals
     button.setAttribute('aria-pressed', 'true');
-    taskElement.classList.add('above');
+    taskElement.classList.add('moving');
 
-    console.log('Element[', taskIndex, '].offsetTop: ', taskElement.offsetTop);
-
-    function followMouse(mouseEv) {
+    function dragTask(mouseEv) {
         const dragDist = mouseEv.clientY - initialClientY;
 
+        // swap positions with the element below
         if (taskElement.nextElementSibling !== null && dragDist > taskElement.offsetTop - initialOffset + distToSwap) {
-            // swap down
+            const taskIndex = parseInt(taskElement.dataset.index);
+            const swapTarget = tasks[taskIndex + 1].elem
+            const travelDist = swapTarget.offsetTop - taskElement.offsetTop;
+
+            // update the array of tasks
             tasks.splice(taskIndex, 2, tasks[taskIndex + 1], tasks[taskIndex]);
-            taskElement.nextElementSibling.after(taskElement);
             save(tasks);
 
-        } else if (taskElement.previousElementSibling !== null && dragDist < taskElement.offsetTop - initialOffset - distToSwap) {
-            // swap up
+            // update the DOM and animate the elements
+            swapTarget.after(taskElement);
+            slideElem(taskElement, -travelDist, 0);
+            slideElem(taskElement.previousElementSibling, travelDist, 0);
+
+            // update the index values on the elements
+            taskElement.dataset.index = taskIndex + 1
+            swapTarget.dataset.index = taskIndex
+        }
+
+        // swap positions with the element above
+        else if (taskElement.previousElementSibling !== null && dragDist < taskElement.offsetTop - initialOffset - distToSwap) {
+            const taskIndex = parseInt(taskElement.dataset.index);
+            const swapTarget = tasks[taskIndex - 1].elem
+            const travelDist = swapTarget.offsetTop - taskElement.offsetTop;
+
+            // update the array of tasks
             tasks.splice(taskIndex - 1, 2, tasks[taskIndex], tasks[taskIndex - 1]);
-            taskElement.after(taskElement.previousElementSibling);
             save(tasks);
-        } else {
+            // console.table(tasks);
 
+            // update the DOM and animate the elements
+            swapTarget.before(taskElement);
+            slideElem(taskElement, -travelDist, 0);
+            slideElem(swapTarget, travelDist, 0);
+
+            // update the index values on the elements
+            taskElement.dataset.index = taskIndex - 1
+            swapTarget.dataset.index = taskIndex
         }
     }
 
-    document.addEventListener('mousemove', followMouse);
+    document.addEventListener('mousemove', dragTask);
     document.addEventListener('mouseup', mouseEv => {
-        // when the mouse is released undo everything that happened when the mouse was first pressed
-        document.removeEventListener('mousemove', followMouse);
-        taskElement.classList.remove('above');
+        // clean up after the mouse is released
+        document.removeEventListener('mousemove', dragTask);
+        taskElement.classList.remove('moving');
         button.setAttribute('aria-pressed', 'false');
     }, {once: true, passive: true});
 });
-
