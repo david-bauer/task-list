@@ -5,8 +5,9 @@ const ANIMATION_TIMING = parseInt(getComputedStyle(document.body).getPropertyVal
 
 function randomizePlaceholder(input) {
     // set a randomized placeholder message for this input field
-    const placeholders = ['buy bananas...', 'go for a run...', 'add a task...', 'to do...', 'hug bessie...',
-        'do laundry...', 'moo...', 'move to a farm...', 'elope...', 'build an app...', 'make lunch...', 'call mom...'];
+    const placeholders = [
+        'buy bananas...', 'go for a run...', 'add a task...', 'to do...', 'hug bessie...', 'do laundry...', 'moo...',
+        'move to a farm...', 'elope...', 'build an app...', 'make lunch...', 'call mom...'];
     input.placeholder = placeholders[Math.round(Math.random() * (placeholders.length - 1))];
 }
 
@@ -34,9 +35,9 @@ class Task {
         this.completed = completed;
 
         this.elem = document.createElement('li');
-        this.elem.setAttribute('aria-checked', this.completed);
+        this.elem.setAttribute('aria-checked', this.completed.toString());
         this.elem.classList.add('task');
-        this.elem.dataset.index = index;
+        this.elem.dataset.index = index.toString();
 
         this.elem.innerHTML =
             `<span class="task-name">${text}</span>` +
@@ -48,7 +49,7 @@ class Task {
         // flip state
         this.completed = !this.completed;
         // update DOM
-        this.elem.setAttribute('aria-checked', this.completed);
+        this.elem.setAttribute('aria-checked', this.completed.toString());
     }
 
     toJSON() {
@@ -61,7 +62,7 @@ class Task {
 function save(object) {
     // convert an object to a string representation of JSON and save it to localStorage
     localStorage.setItem(COOKIE_NAME, JSON.stringify(object));
-    console.table(object);
+    // console.table(object);
 }
 
 
@@ -86,7 +87,6 @@ function importTasks(taskListElem) {
         });
     } catch (err) {
         console.error('Could not import all tasks: ', err);
-
         const errorTask = new Task("task import failed :(");
         errorTask.elem.classList.add('error');
         taskListElem.append(errorTask.elem);
@@ -105,7 +105,7 @@ function addTaskEvent(taskList, submitEv) {
     submitEv.preventDefault();
     const formElem = submitEv.currentTarget;
     const taskNameFieldElem = formElem.firstElementChild;
-    const taskListElem = formElem.lastElementChild;
+    const taskListElem = formElem.parentElement.lastElementChild;
     randomizePlaceholder(taskNameFieldElem);
 
     const taskName = taskNameFieldElem.value.trim();
@@ -121,7 +121,8 @@ function addTaskEvent(taskList, submitEv) {
 
     // add the new task to the DOM and animate
     taskListElem.appendChild(newTask.elem);
-    const grow = [{transform: "scaleY(0)"},
+    const grow = [
+        {transform: "scaleY(0)"},
         {transform: "scaleY(1)"}];
     newTask.elem.animate(grow, ANIMATION_TIMING);
     formElem.reset();
@@ -144,9 +145,8 @@ function clickEvent(taskList, clickEv) {
         clickedTaskElem.classList.add('moving');
         const shrink = [
             {transform: "scaleY(1)"},
-            {transform: "scaleY(0)"}
-        ];
-        clickedTaskElem.animate(shrink, ANIMATION_TIMING).finished.then(value => {
+            {transform: "scaleY(0)"}];
+        clickedTaskElem.animate(shrink, ANIMATION_TIMING).finished.then(() => {
             // remove the task element from the DOM after the animation finishes
             clickedTaskElem.remove();
         });
@@ -154,8 +154,7 @@ function clickEvent(taskList, clickEv) {
         // move the rest of the tasks up and update their indices
         taskList.forEach((task, index) => {
             if (index > clickedTaskIndex) {
-                const travelDist = taskList[index - 1].elem.offsetTop - task.elem.offsetTop;
-                slideElem(task.elem, 0, travelDist);
+                slideElem(task.elem, 0, -clickedTaskElem.offsetHeight);
                 task.elem.dataset.index = (index - 1).toString();
             }
         });
@@ -179,7 +178,7 @@ function clickEvent(taskList, clickEv) {
 
 
 function startDragEvent(taskList, clickEv) {
-    /** triggered when a Tasks's drag button is clicked. Causes the Task to become draggable.
+    /** triggered when a Tasks' drag button is clicked. Causes the Task to become draggable.
      *  taskList: an array of Task objects
      *  submitEv: an Event object
      */
@@ -258,13 +257,14 @@ function startDragEvent(taskList, clickEv) {
 
 const taskListElem = document.querySelector('.task-list');
 const tasks = importTasks(taskListElem);
-// change the prompt to something quirky after the first visit
-if (tasks.length > 0) {
-    randomizePlaceholder(document.querySelector('.add-task-input'));
-}
 // add task form functionality
 document.querySelector('.add-task-form').addEventListener('submit', addTaskEvent.bind(null, tasks));
 // task click functionality
 taskListElem.addEventListener('click', clickEvent.bind(null, tasks));
 // task drag functionality
 taskListElem.addEventListener('mousedown', startDragEvent.bind(null, tasks));
+
+// change the prompt to something quirky after the first visit
+if (tasks.length > 0) {
+    randomizePlaceholder(document.querySelector('.add-task-input'));
+}
