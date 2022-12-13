@@ -153,10 +153,10 @@ class TaskList extends Array {
         this.push(new Task(text, completed, this.length));
     }
 
-    swap(taskRefA, taskRefB) {
-        const indexA = this.#validateIndex(taskRefA);
+    swap(taskRefOne, taskRefTwo) {
+        const indexA = Math.min(this.#validateIndex(taskRefOne), this.#validateIndex(taskRefTwo));
         const taskA = this[indexA];
-        const indexB = this.#validateIndex(taskRefB)
+        const indexB = Math.max(taskRefOne, taskRefTwo);
         const taskB = this[indexB];
 
         if (indexA === indexB) return;
@@ -168,7 +168,6 @@ class TaskList extends Array {
         taskA.index = indexB;
         taskB.index = indexA;
 
-        // TODO: fix DOM desync when indexA < indexB
         if (this.length === 2) {
             taskB.elem.after(taskA.elem);
         }
@@ -265,7 +264,7 @@ class TaskList extends Array {
 
     concat(...taskLists) {
         const combinedTaskList = new TaskList();
-        taskLists.forEach((taskList, index) => {
+        taskLists.forEach(taskList => {
             combinedTaskList.append(...taskList);
         });
         return combinedTaskList;
@@ -304,7 +303,7 @@ class TaskList extends Array {
         const targetIndex = this.#validateIndex(taskRef);
         const removedTask = this[targetIndex];
         // shrink the element and then remove it
-        removedTask.shrink().finished.then((value) => {
+        removedTask.shrink().finished.then(() => {
             removedTask.elem.remove();
         });
         super.splice(targetIndex, 1);
@@ -354,7 +353,7 @@ class TaskList extends Array {
 function save(object) {
     // convert an object to a string representation of JSON and save it to localStorage
     localStorage.setItem(COOKIE_NAME, JSON.stringify(object));
-    console.table(object);
+    // console.table(object);
 }
 
 
@@ -455,7 +454,7 @@ function startDragEvent(taskList, clickEv) {
     }
 
     document.addEventListener('mousemove', dragEvent);
-    document.addEventListener('mouseup', releaseEv => {
+    document.addEventListener('mouseup', () => {
         // clean up after the mouse is released
         document.removeEventListener('mousemove', dragEvent);
         taskElement.classList.remove('moving');

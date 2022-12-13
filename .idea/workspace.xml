@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="2ffa6e17-be34-4181-a881-015b57b4ff97" name="Changes" comment="now allows multi line tasks and reorganized anonymous event handlers into named functions" />
+    <list default="true" id="2ffa6e17-be34-4181-a881-015b57b4ff97" name="Changes" comment="fixed bug where swap(indexA, indexB) wouldn't work when indexB &lt; indexA">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/todolist.js" beforeDir="false" afterPath="$PROJECT_DIR$/todolist.js" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -23,19 +26,19 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
-      "JavaScript"
+  &quot;keyToStringList&quot;: {
+    &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
+      &quot;JavaScript&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -45,6 +48,7 @@
       <option name="presentableId" value="Default" />
       <updated>1670792208754</updated>
       <workItem from="1670792210800" duration="43775000" />
+      <workItem from="1670906533252" duration="505000" />
     </task>
     <task id="LOCAL-00001" summary="now allows multi line tasks and reorganized anonymous event handlers into named functions">
       <created>1670797061324</created>
@@ -64,7 +68,34 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="origin/class" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="origin/class" />
+                </option>
+              </RecentGroup>
+            </list>
           </value>
         </entry>
       </map>
@@ -72,6 +103,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="now allows multi line tasks and reorganized anonymous event handlers into named functions" />
-    <option name="LAST_COMMIT_MESSAGE" value="now allows multi line tasks and reorganized anonymous event handlers into named functions" />
+    <MESSAGE value="fixed bug where swap(indexA, indexB) wouldn't work when indexB &lt; indexA" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixed bug where swap(indexA, indexB) wouldn't work when indexB &lt; indexA" />
   </component>
 </project>
